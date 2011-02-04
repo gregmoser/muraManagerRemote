@@ -5,7 +5,6 @@
 			<p>
 				<strong>Instance Key: </strong> #application.muraMonitorRemote.remote.getInstanceKey()#<br />
 				<strong>Passkey: </strong>#application.muraMonitorRemote.pluginConfig.getSetting("Passkey")#<br />
-				<strong>expTran: </strong>#application.muraMonitorRemote.remote.getExpectedTransactionKey()#
 			</p>
 		<cfelse>
 			<p>You must be a Super Admin to view the settings in this plugin.</p>
