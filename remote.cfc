@@ -12,8 +12,8 @@ component accessors="true" {
 		if(!authenticate(arguments.transactionKey)) {
 			Status.error = "Could Not Authenticate";
 		} else {
-			Status.Plugins = application.pluginManager.getAllPlugins();
-			Status.Sites = application.settingsManager.getList();
+			Status.Plugins = getStatusPlugins();
+			Status.Sites = getStatusSites();
 		}
 		
 		return SerializeJSON(Status);
@@ -41,5 +41,35 @@ component accessors="true" {
 		var date = #DateFormat(now(), "MM-DD-YYYY")#;
 		var passdate = lcase(hash(lcase("#passkey##date#")));
 		return lcase(hash(lcase("#passdate##getInstanceKey()#")));
+	}
+	
+	// Functions for filling status struct
+	private array function getStatusSites() {
+		var sitesArray = arrayNew(1);
+		var sitesQuery = application.settingsManager.getList();
+		for(var i=1; i <= sitesQuery.recordcount; i++) {
+			var site = structNew();
+			site.siteID = sitesQuery[i].siteID;
+			site.site = sitesQuery[i].site;
+			site.theme = sitesQuery[i].theme;
+			arrayAppend(sitesArray, site);
+		}
+		return sitesArray;
+	}
+	
+	private array function getStatusPlugins() {
+		var pluginsArray = arrayNew(1);
+		var pluginsQuery = application.pluginManager.getAllPlugins();
+		for(var i=1; i <= pluginsQuery.recordcount; i++) {
+			var plugin = structNew();
+			plugin.pluginID = pluginsQuery[i].pluginID;
+			plugin.moduleID = pluginsQuery[i].moduleID;
+			plugin.name = pluginsQuery[i].name;
+			plugin.provider = pluginsQuery[i].provider;
+			plugin.providerURL = pluginsQuery[i].providerURL;
+			plugin.version = pluginsQuery[i].version;
+			arrayAppend(pluginsArray, plugin);
+		}
+		return pluginsArray;
 	}
 }
