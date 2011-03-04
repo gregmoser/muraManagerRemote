@@ -39,6 +39,7 @@ component accessors="true" {
 		} else {
 			Status.Plugins = getStatusPlugins();
 			Status.Sites = getStatusSites();
+			Status.Comments = getStatusComments();
 			Status.Version = application.autoUpdater.getCurrentCompleteVersion();
 		}
 		
@@ -73,22 +74,29 @@ component accessors="true" {
 		cqo.setPassword(application.configBean.getPassword());
 		cqo.setSql("
 			SELECT 
-				commentid,
-				contentid,
-				url,
-				name,
-				comments,
-				entered,
-				email,
-				siteid,
-				ip,
-				isApproved,
-				subscribe,
-				userID,
-				parentID,
-				path
+				tcontent.Title,
+				tcontent.MenuTitle,
+				tcontent.Filename,
+				tcontent.path,
+				tsettings.site,
+				tcontentcomments.commentid,
+				tcontentcomments.contentid,
+				tcontentcomments.url,
+				tcontentcomments.name,
+				tcontentcomments.comments,
+				tcontentcomments.entered,
+				tcontentcomments.email,
+				tcontentcomments.siteid,
+				tcontentcomments.ip,
+				tcontentcomments.isApproved,
+				tcontentcomments.subscribe,
+				tcontentcomments.userID
 			FROM
 				tcontentcomments
+			  inner join
+			  	tcontent on tcontentcomments.contentid = tcontent.contentid and tcontent.Active = 1
+			  inner join
+				tsettings on tcontentcomments.siteid = tsettings.siteid
 			WHERE
 				isApproved = 0
 		");
