@@ -1,7 +1,7 @@
 <plugin>
 <name>mura Manager Remote</name>
 <package>"muraManagerRemote"</package>
-<version>0.1</version>
+<version>0.2</version>
 <provider>Greg Moser</provider>
 <providerURL>http://www.gregmoser.com</providerURL>
 <category>Application</category>
