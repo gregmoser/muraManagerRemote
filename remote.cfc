@@ -1,78 +1,62 @@
-component accessors="true" {
-			
-	property name="instanceKey" type="string";
+<cfcomponent name="remote">
+	<cfset variables.instanceKey = "" />
 	
-	public any function init() {
-		return this;
-	}
+	<cffunction name="init">
+		<cfreturn this />
+	</cffunction>	
 	
-	public any function authenticate (required string transactionKey) {
-		if(getExpectedTransactionKey() == arguments.transactionKey) {
-			return true;	
-		} else {
-			return false;
-		}
-	}
-	
-	public string function getInstanceKey() {
-		if(!isDefined("variables.instanceKey")) {
-			var enviornment = createObject("java", "java.lang.System").getenv();
-			var tempID = "#enviornment.computername##enviornment.userdomain##getDirectoryFromPath(getCurrentTemplatePath())#";
-			variables.instanceKey = lcase(hash(lcase(tempID)));
-		}
-		return variables.instanceKey;
-	}
-	
-	public string function getExpectedTransactionKey() {
-		var passkey = application.muraMonitorRemote.pluginConfig.getSetting("Passkey");
-		var date = #DateFormat(now(), "MM-DD-YYYY")#;
-		var passdate = lcase(hash(lcase("#passkey##date#")));
-		return lcase(hash(lcase("#passdate##getInstanceKey()#")));
-	}
-	
-	// Functions for filling status struct
-	remote any function getStatus(required string transactionKey) {
-		var Status = structNew();
+	<cffunction name="authenticate">
+		<cfargument name="transactionKey" required="true" type="string" /> 
 		
-		if(!authenticate(arguments.transactionKey)) {
-			Status.error = "Could Not Authenticate";
-		} else {
-			Status.Plugins = getStatusPlugins();
-			Status.Sites = getStatusSites();
-			Status.Comments = getStatusComments();
-			Status.Version = application.autoUpdater.getCurrentCompleteVersion();
-		}
+		<cfif getExpectedTransactionKey() eq arguments.transactionKey>
+			<cfreturn true />
+		<cfelse>
+			<cfreturn false />
+		</cfif>
+	</cffunction>
+	
+	<cffunction name="getInstanceKey">
+		<cfset var sysObj = "" />
+		<cfset var enviornment = "" />
+		<cfset var tempID = "" />
 		
-		return SerializeJSON(Status);
-	}
+		<cfif variables.instanceKey eq "">
+			<cfset sysObj = createObject("java", "java.lang.System") />
+			<cfset enviornment = sysObj.getenv() />
+			<cfset tempID = "#enviornment.computername##enviornment.userdomain##getDirectoryFromPath(getCurrentTemplatePath())#" />
+			<cfset variables.instanceKey = lcase(hash(lcase(tempID))) />
+		</cfif>
+		
+		<cfreturn variables.InstanceKey />
+	</cffunction>
 	
-	private array function getStatusSites() {
-		var sitesArray = arrayNew(1);
-		var sitesQuery = application.settingsManager.getList();
-		for(var i=1; i <= sitesQuery.recordcount; i++) {
-			var siteStruct = queryRowToStruct(sitesQuery, i);
-			siteStruct.siteVersion = application.autoUpdater.getCurrentCompleteVersion(siteStruct.siteid);
-			arrayAppend(sitesArray, siteStruct);
-		}
-		return sitesArray;
-	}
+	<cffunction name="getExpectedTransactionKey">
+		<cfset var passkey = application.muraMonitorRemote.pluginConfig.getSetting("Passkey") />
+		<cfset var date = #DateFormat(now(), "MM-DD-YYYY")# />
+		<cfset var passdate = lcase(hash(lcase("#passkey##date#"))) />
+		<cfreturn lcase(hash(lcase("#passdate##getInstanceKey()#"))) />
+	</cffunction>
 	
-	private array function getStatusPlugins() {
-		var pluginsArray = arrayNew(1);
-		var pluginsQuery = application.pluginManager.getAllPlugins();
-		for(var i=1; i <= pluginsQuery.recordcount; i++) {
-			arrayAppend(pluginsArray, queryRowToStruct(pluginsQuery, i));
-		}
-		return pluginsArray;
-	}
+	<cffunction name="getStatus" access="remote">
+		<cfargument name="transactionKey" default="" />
+		
+		<cfset var status = structNew() />
+
+		<cfif not authenticate(arguments.transactionKey)>
+			<cfset status.error = "Could Not Authenticate" />
+		<cfelse>
+			<cfset status.plugins = getStatusPlugins() />
+			<cfset status.sites = getStatusSites() />
+			<cfset status.comments = getStatusComments() />
+			<cfset status.coreVersion = application.autoUpdater.getCurrentCompleteVersion() />	
+		</cfif>
+		
+		<cfreturn serializeJSON(status) />
+	</cffunction>
 	
-	private array function getStatusComments() {
-		var commentsArray = arrayNew(1);
-		var cqo = new Query();
-		cqo.setDataSource(application.configBean.getDatasource());
-		cqo.setUsername(application.configBean.getUsername());
-		cqo.setPassword(application.configBean.getPassword());
-		cqo.setSql("
+	<cffunction name="getStatusComments">
+		<cfset var commentsArray = arrayNew(1) />
+		<cfquery name="commentsQuery" datasource="#application.configBean.getDatasource()#" username="#application.configBean.getUsername()#" password="#application.configBean.getPassword()#" >
 			SELECT 
 				tcontent.Title,
 				tcontent.MenuTitle,
@@ -98,21 +82,56 @@ component accessors="true" {
 			  inner join
 				tsettings on tcontentcomments.siteid = tsettings.siteid
 			WHERE
-				isApproved = 0
-		");
-		var commentsQuery = cqo.execute().getResult();
-		for(var i=1; i <= commentsQuery.recordcount; i++) {
-			arrayAppend(commentsArray, queryRowToStruct(commentsQuery, i));
-		}
-		return commentsArray;
-	}
+				isApproved = <cfqueryparam value="0" />
+		</cfquery>
+		<cfloop query="commentsQuery">
+			<cfset arrayAppend(commentsArray, queryRowToStruct(commentsQuery, commentsQuery.currentRow)) />
+		</cfloop>
+		<cfreturn commentsArray />
+	</cffunction>
 	
-	private array function getStatusTraffic() {
-		var trafficArray = arrayNew(1);
+	<cffunction name="getStatusDrafts">
+		<cfargument name="siteid" />
+		<cfset var draftsArray = arrayNew(1) />
+		<cfset var draftsQuery = application.contentManager.getDraftList(arguments.siteid) />
+		<cfloop query="draftsQuery">
+			<cfset arrayAppend(draftsArray, queryRowToStruct(draftsQuery, draftsQuery.currentRow)) />
+		</cfloop>
+		<cfreturn draftsArray /> 
+	</cffunction>
 		
-		return trafficArray;
-	}
+	<cffunction name="getStatusPlugins">
+		<cfset var pluginsArray = arrayNew(1) />
+		<cfset var pluginsQuery = application.pluginManager.getAllPlugins() />
+		<cfloop query="pluginsQuery">
+			<cfset arrayAppend(pluginsArray, queryRowToStruct(pluginsQuery, pluginsQuery.currentRow)) />
+		</cfloop>
+		<cfreturn pluginsArray /> 
+	</cffunction>
+		
+	<cffunction name="getStatusSites">
+		<cfset var sitesArray = arrayNew(1) />
+		<cfset var sitesQuery = application.settingsManager.getList() />
+		<cfset var siteStruct = structNew() />
+		<cfloop query="sitesQuery">
+			<cfset siteStruct = queryRowToStruct(sitesQuery, sitesQuery.currentRow) />
+			<cfset siteStruct.drafts = getStatusDrafts(siteStruct.siteid) />
+			<cfset siteStruct.siteVersion = application.autoUpdater.getCurrentCompleteVersion(siteStruct.siteid) />
+			<cfset arrayAppend(sitesArray, siteStruct) />
+		</cfloop>
+		<cfreturn sitesArray />
+	</cffunction>
 	
+	<cfscript>
+	/**
+	* Makes a row of a query into a structure.
+	* 
+	* @param query      The query to work with. 
+	* @param row      Row number to check. Defaults to row 1. 
+	* @return Returns a structure. 
+	* @author Nathan Dintenfass (nathan@changemedia.com) 
+	* @version 1, December 11, 2001 
+	*/
 	function queryRowToStruct(query){
 	    //by default, do this to the first row of the query
 	    var row = 1;
@@ -132,4 +151,6 @@ component accessors="true" {
 	    //return the struct
 	    return stReturn;
 	}
-}
+	</cfscript>
+	
+</cfcomponent>
