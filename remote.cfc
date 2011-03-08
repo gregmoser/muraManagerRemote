@@ -1,7 +1,7 @@
 <cfcomponent name="remote">
 	<cfset variables.instanceKey = "" />
 	
-	<cffunction name="init">
+	<cffunction name="init" returnType="Any" access="public">
 		<cfreturn this />
 	</cffunction>	
 	
@@ -37,7 +37,7 @@
 		<cfreturn lcase(hash(lcase("#passdate##getInstanceKey()#"))) />
 	</cffunction>
 	
-	<cffunction name="getStatus" access="remote">
+	<cffunction name="getStatus" access="remote" returntype="Any">
 		<cfargument name="transactionKey" default="" />
 		
 		<cfset var status = structNew() />
@@ -48,10 +48,11 @@
 			<cfset status.plugins = getStatusPlugins() />
 			<cfset status.sites = getStatusSites() />
 			<cfset status.comments = getStatusComments() />
+			<cfset status.drafts = getStatusDrafts() />
 			<cfset status.coreVersion = application.autoUpdater.getCurrentCompleteVersion() />	
 		</cfif>
 		
-		<cfreturn serializeJSON(status) />
+		<cfreturn status />
 	</cffunction>
 	
 	<cffunction name="getStatusComments">
@@ -91,9 +92,79 @@
 	</cffunction>
 	
 	<cffunction name="getStatusDrafts">
-		<cfargument name="siteid" />
 		<cfset var draftsArray = arrayNew(1) />
-		<cfset var draftsQuery = application.contentManager.getDraftList(arguments.siteid) />
+		<cfquery name="draftsQuery" datasource="#application.configBean.getDatasource()#" username="#application.configBean.getUsername()#" password="#application.configBean.getPassword()#" >
+			SELECT
+				tcontent.tcontent_ID,
+				tcontent.SiteID,
+				tcontent.ModuleID,
+				tcontent.ParentID,
+				tcontent.ContentID,
+				tcontent.ContentHistID,
+				tcontent.RemoteID,
+				tcontent.RemoteURL,
+				tcontent.RemotePubDate,
+				tcontent.RemoteSourceURL,
+				tcontent.RemoteSource,
+				tcontent.Credits,
+				tcontent.FileID,
+				tcontent.Template,
+				tcontent.Type,
+				tcontent.subType,
+				tcontent.Active,
+				tcontent.OrderNo,
+				tcontent.Title,
+				tcontent.MenuTitle,
+				tcontent.Summary,
+				tcontent.Filename,
+				tcontent.MetaDesc,
+				tcontent.MetaKeyWords,
+				tcontent.Body,
+				tcontent.lastUpdate,
+				tcontent.lastUpdateBy,
+				tcontent.lastUpdateByID,
+				tcontent.DisplayStart,
+				tcontent.DisplayStop,
+				tcontent.Display,
+				tcontent.Approved,
+				tcontent.IsNav,
+				tcontent.Restricted,
+				tcontent.RestrictGroups,
+				tcontent.Target,
+				tcontent.TargetParams,
+				tcontent.responseChart,
+				tcontent.responseMessage,
+				tcontent.responseSendTo,
+				tcontent.responseDisplayFields,
+				tcontent.moduleAssign,
+				tcontent.displayTitle,
+				tcontent.Notes,
+				tcontent.inheritObjects,
+				tcontent.isFeature,
+				tcontent.ReleaseDate,
+				tcontent.IsLocked,
+				tcontent.nextN,
+				tcontent.sortBy,
+				tcontent.sortDirection,
+				tcontent.featureStart,
+				tcontent.featureStop,
+				tcontent.forceSSL,
+				tcontent.audience,
+				tcontent.keyPoints,
+				tcontent.searchExclude,
+				tcontent.path,
+				tcontent.tags,
+				tcontent.doCache,
+				tcontent.urltitle,
+				tcontent.htmltitle,
+				tcontent.created,
+				tcontent.mobileExclude,
+				tcontent.changesetID
+			FROM
+				tcontent
+			WHERE
+				tcontent.approved = <cfqueryparam value="0" />
+		</cfquery>
 		<cfloop query="draftsQuery">
 			<cfset arrayAppend(draftsArray, queryRowToStruct(draftsQuery, draftsQuery.currentRow)) />
 		</cfloop>
@@ -115,7 +186,6 @@
 		<cfset var siteStruct = structNew() />
 		<cfloop query="sitesQuery">
 			<cfset siteStruct = queryRowToStruct(sitesQuery, sitesQuery.currentRow) />
-			<cfset siteStruct.drafts = getStatusDrafts(siteStruct.siteid) />
 			<cfset siteStruct.siteVersion = application.autoUpdater.getCurrentCompleteVersion(siteStruct.siteid) />
 			<cfset arrayAppend(sitesArray, siteStruct) />
 		</cfloop>
